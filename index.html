@@ -113,7 +113,7 @@ function medir() {
   let rms = Math.sqrt(sum / dataArray.length);
   let db = 20 * Math.log10(rms);
 
-  db = db + 90; // ajuste
+  db = db; // ajuste
 
   historico.push(db);
   if (historico.length > 5) historico.shift();
