@@ -73,32 +73,50 @@
 let analyser, dataArray;
 let historico = [];
 
-async function iniciar() {
-  try {
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+let baseline = null; // nível de silêncio
 
-    if (audioContext.state === "suspended") {
-      await audioContext.resume();
+async function iniciar() {
+  const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+  if (audioContext.state === "suspended") {
+    await audioContext.resume();
+  }
+
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+  analyser = audioContext.createAnalyser();
+  const source = audioContext.createMediaStreamSource(stream);
+
+  source.connect(analyser);
+
+  analyser.fftSize = 512;
+  dataArray = new Uint8Array(analyser.fftSize);
+
+  document.getElementById("status").innerText = "Calibrando ambiente...";
+
+  // 🔧 Calibra por 1 segundo
+  let amostras = [];
+
+  for (let i = 0; i < 30; i++) {
+    analyser.getByteTimeDomainData(dataArray);
+
+    let sum = 0;
+    for (let j = 0; j < dataArray.length; j++) {
+      let x = dataArray[j] - 128;
+      sum += x * x;
     }
 
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    let rms = Math.sqrt(sum / dataArray.length);
+    amostras.push(rms);
 
-    analyser = audioContext.createAnalyser();
-    const source = audioContext.createMediaStreamSource(stream);
-
-    source.connect(analyser);
-
-    analyser.fftSize = 512;
-    dataArray = new Uint8Array(analyser.fftSize);
-
-    document.getElementById("status").innerText = "Captando som...";
-
-    medir();
-
-  } catch (e) {
-    document.getElementById("status").innerText = "Erro ao acessar microfone";
-    console.error(e);
+    await new Promise(r => setTimeout(r, 30));
   }
+
+  baseline = amostras.reduce((a,b)=>a+b,0) / amostras.length;
+
+  document.getElementById("status").innerText = "Captando som...";
+
+  medir();
 }
 
 function medir() {
@@ -111,18 +129,25 @@ function medir() {
   }
 
   let rms = Math.sqrt(sum / dataArray.length);
-  let db = 20 * Math.log10(rms);
 
-  db = db; // ajuste
+  // 🔥 compara com o silêncio
+  let ratio = rms / baseline;
 
-  historico.push(db);
+  let db = 20 * Math.log10(ratio);
+
+  // escala mais realista
+  let dbFinal = Math.max(30, Math.min(100, Math.round(db + 40)));
+
+  // suavização
+  historico.push(dbFinal);
   if (historico.length > 5) historico.shift();
 
   let media = historico.reduce((a,b)=>a+b,0) / historico.length;
-  let dbAtual = Math.round(Math.max(0, media));
+  let dbAtual = Math.round(media);
 
   document.getElementById("db").innerText = dbAtual;
 
+  // classificação
   let nivel = "";
   let cor = "";
 
