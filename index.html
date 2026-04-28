@@ -1,9 +1,14 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <title>Medidor de Ruído</title>
- <style>
+<meta charset="UTF-8">
+
+<!-- 🔥 ESSENCIAL PARA MOBILE -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+<title>Medidor de Ruído</title>
+
+<style>
   body {
     margin: 0;
     font-family: Arial, sans-serif;
@@ -14,65 +19,84 @@
     align-items: center;
     justify-content: center;
     height: 100vh;
+    text-align: center;
   }
 
   h1 {
-    font-size: 28px;
+    font-size: 5vw;
     margin-bottom: 10px;
   }
 
   #db {
-    font-size: 120px; /* 🔥 número gigante */
+    font-size: 25vw; /* 🔥 escala com a tela */
     font-weight: bold;
-    margin: 20px 0;
+    margin: 10px 0;
   }
 
   #nivel {
-    font-size: 24px;
+    font-size: 6vw;
     margin-bottom: 20px;
   }
 
   button {
-    font-size: 20px;
-    padding: 15px 30px;
-    border-radius: 10px;
+    width: 80%;
+    max-width: 300px;
+    font-size: 6vw;
+    padding: 15px;
+    border-radius: 12px;
     border: none;
     background: #00c853;
     color: white;
     cursor: pointer;
   }
+
+  #status {
+    margin-top: 15px;
+    font-size: 4vw;
+    color: #aaa;
+  }
 </style>
 </head>
+
 <body>
 
 <h1>Medidor de Ruído</h1>
-<div id="db">Clique em iniciar</div>
-<button onclick="iniciar()">Iniciar</button>
-<button onclick="capturar()">Capturar</button>
 
-<div id="historico"></div>
+<div id="db">--</div>
+<div id="nivel">Aguardando</div>
+
+<button onclick="iniciar()">Iniciar</button>
+
+<div id="status">Permita o uso do microfone</div>
 
 <script>
-let dbAtual = 0;
-let historico = [];
 let analyser, dataArray;
+let historico = [];
 
 async function iniciar() {
   try {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+    if (audioContext.state === "suspended") {
+      await audioContext.resume();
+    }
+
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
     analyser = audioContext.createAnalyser();
-
     const source = audioContext.createMediaStreamSource(stream);
+
     source.connect(analyser);
 
     analyser.fftSize = 512;
     dataArray = new Uint8Array(analyser.fftSize);
 
+    document.getElementById("status").innerText = "Captando som...";
+
     medir();
+
   } catch (e) {
-    alert("Erro ao acessar microfone. Verifique permissões.");
+    document.getElementById("status").innerText = "Erro ao acessar microfone";
     console.error(e);
   }
 }
@@ -89,20 +113,34 @@ function medir() {
   let rms = Math.sqrt(sum / dataArray.length);
   let db = 20 * Math.log10(rms);
 
-  dbAtual = Math.max(0, Math.round(db + 100)); // ajuste visual
+  db = db + 90; // ajuste
 
-  document.getElementById("db").innerText = dbAtual + " dB";
+  historico.push(db);
+  if (historico.length > 5) historico.shift();
+
+  let media = historico.reduce((a,b)=>a+b,0) / historico.length;
+  let dbAtual = Math.round(Math.max(0, media));
+
+  document.getElementById("db").innerText = dbAtual;
+
+  let nivel = "";
+  let cor = "";
+
+  if (dbAtual < 50) {
+    nivel = "Baixo";
+    cor = "#00e676";
+  } else if (dbAtual < 70) {
+    nivel = "Moderado";
+    cor = "#ffeb3b";
+  } else {
+    nivel = "Alto";
+    cor = "#ff1744";
+  }
+
+  document.getElementById("nivel").innerText = nivel;
+  document.getElementById("db").style.color = cor;
 
   requestAnimationFrame(medir);
-}
-
-function capturar() {
-  let hora = new Date().toLocaleTimeString();
-  historico.unshift(`${hora} - ${dbAtual} dB`);
-
-  document.getElementById("historico").innerHTML =
-    "<h3>Histórico</h3>" +
-    historico.map(h => `<div>${h}</div>`).join("");
 }
 </script>
 
