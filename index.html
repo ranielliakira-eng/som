@@ -135,8 +135,10 @@ function medir() {
 
   let db = 20 * Math.log10(ratio);
 
-  // escala mais realista
-  let dbFinal = Math.max(30, Math.min(100, Math.round(db + 1)));
+let dbFinal = 45 + (db * 2);
+
+// limitar faixa
+dbFinal = Math.max(35, Math.min(95, dbFinal));
 
   // suavização
   historico.push(dbFinal);
