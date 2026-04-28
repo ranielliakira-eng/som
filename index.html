@@ -72,6 +72,7 @@
 <script>
 let analyser, dataArray;
 let historico = [];
+  let dbSuavizado = 40;
 
 let baseline = null; // nível de silêncio
 
@@ -141,11 +142,9 @@ let dbFinal = 45 + (db * 1);
 dbFinal = Math.max(35, Math.min(95, dbFinal));
 
   // suavização
-  historico.push(dbFinal);
-  if (historico.length > 5) historico.shift();
+dbSuavizado = dbSuavizado * 0.92 + dbFinal * 0.08;
 
-  let media = historico.reduce((a,b)=>a+b,0) / historico.length;
-  let dbAtual = Math.round(media);
+let dbAtual = Math.round(dbSuavizado);
 
   document.getElementById("db").innerText = dbAtual;
 
