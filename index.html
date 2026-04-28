@@ -5,7 +5,7 @@
   <title>Medidor de Ruído</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
+      font-family: Arial;
       text-align: center;
       background: #111;
       color: #fff;
@@ -13,73 +13,81 @@
     }
     #db {
       font-size: 60px;
-      margin: 20px 0;
+      margin: 20px;
     }
     button {
-      padding: 15px 25px;
+      padding: 15px;
       font-size: 18px;
-      border: none;
       border-radius: 8px;
+      border: none;
       cursor: pointer;
-      margin: 10px;
-    }
-    #capturar {
       background: #00c853;
       color: white;
-    }
-    #historico {
-      margin-top: 30px;
-      font-size: 16px;
     }
   </style>
 </head>
 <body>
 
-  <h1>Medidor de Ruído</h1>
-  <div id="db">0 dB</div>
+<h1>Medidor de Ruído</h1>
+<div id="db">Clique em iniciar</div>
+<button onclick="iniciar()">Iniciar</button>
+<button onclick="capturar()">Capturar</button>
 
-  <button id="capturar">Capturar</button>
+<div id="historico"></div>
 
-  <div id="historico"></div>
+<script>
+let dbAtual = 0;
+let historico = [];
+let analyser, dataArray;
 
-  <script>
-    let audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    let analyser = audioContext.createAnalyser();
-    let microphone;
+async function iniciar() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
-    let historico = [];
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    analyser = audioContext.createAnalyser();
 
-    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-      microphone = audioContext.createMediaStreamSource(stream);
-      microphone.connect(analyser);
-      medir();
-    });
+    const source = audioContext.createMediaStreamSource(stream);
+    source.connect(analyser);
 
-    function medir() {
-      let data = new Uint8Array(analyser.frequencyBinCount);
-      analyser.getByteFrequencyData(data);
+    analyser.fftSize = 512;
+    dataArray = new Uint8Array(analyser.fftSize);
 
-      let sum = data.reduce((a, b) => a + b, 0);
-      let avg = sum / data.length;
+    medir();
+  } catch (e) {
+    alert("Erro ao acessar microfone. Verifique permissões.");
+    console.error(e);
+  }
+}
 
-      let db = Math.round(avg); // estimativa simples
-      document.getElementById("db").innerText = db + " dB";
+function medir() {
+  analyser.getByteTimeDomainData(dataArray);
 
-      window.dbAtual = db;
+  let sum = 0;
+  for (let i = 0; i < dataArray.length; i++) {
+    let x = dataArray[i] - 128;
+    sum += x * x;
+  }
 
-      requestAnimationFrame(medir);
-    }
+  let rms = Math.sqrt(sum / dataArray.length);
+  let db = 20 * Math.log10(rms);
 
-    document.getElementById("capturar").onclick = function() {
-      let agora = new Date().toLocaleTimeString();
-      let registro = `${agora} - ${window.dbAtual} dB`;
+  dbAtual = Math.max(0, Math.round(db + 100)); // ajuste visual
 
-      historico.unshift(registro);
+  document.getElementById("db").innerText = dbAtual + " dB";
 
-      document.getElementById("historico").innerHTML =
-        "<h3>Histórico</h3>" + historico.map(item => `<div>${item}</div>`).join("");
-    };
-  </script>
+  requestAnimationFrame(medir);
+}
+
+function capturar() {
+  let hora = new Date().toLocaleTimeString();
+  historico.unshift(`${hora} - ${dbAtual} dB`);
+
+  document.getElementById("historico").innerHTML =
+    "<h3>Histórico</h3>" +
+    historico.map(h => `<div>${h}</div>`).join("");
+}
+</script>
 
 </body>
 </html>
