@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Medidor de Ruído</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background: #111;
+      color: #fff;
+      padding-top: 50px;
+    }
+    #db {
+      font-size: 60px;
+      margin: 20px 0;
+    }
+    button {
+      padding: 15px 25px;
+      font-size: 18px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      margin: 10px;
+    }
+    #capturar {
+      background: #00c853;
+      color: white;
+    }
+    #historico {
+      margin-top: 30px;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Medidor de Ruído</h1>
+  <div id="db">0 dB</div>
+
+  <button id="capturar">Capturar</button>
+
+  <div id="historico"></div>
+
+  <script>
+    let audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    let analyser = audioContext.createAnalyser();
+    let microphone;
+
+    let historico = [];
+
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+      microphone = audioContext.createMediaStreamSource(stream);
+      microphone.connect(analyser);
+      medir();
+    });
+
+    function medir() {
+      let data = new Uint8Array(analyser.frequencyBinCount);
+      analyser.getByteFrequencyData(data);
+
+      let sum = data.reduce((a, b) => a + b, 0);
+      let avg = sum / data.length;
+
+      let db = Math.round(avg); // estimativa simples
+      document.getElementById("db").innerText = db + " dB";
+
+      window.dbAtual = db;
+
+      requestAnimationFrame(medir);
+    }
+
+    document.getElementById("capturar").onclick = function() {
+      let agora = new Date().toLocaleTimeString();
+      let registro = `${agora} - ${window.dbAtual} dB`;
+
+      historico.unshift(registro);
+
+      document.getElementById("historico").innerHTML =
+        "<h3>Histórico</h3>" + historico.map(item => `<div>${item}</div>`).join("");
+    };
+  </script>
+
+</body>
+</html>
