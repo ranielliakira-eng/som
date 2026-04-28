@@ -131,7 +131,7 @@ function medir() {
   let rms = Math.sqrt(sum / dataArray.length);
 
   // 🔥 compara com o silêncio
- let ratio = rms / (baseline * 0.5);
+ let ratio = rms / (baseline * 0.59);
 
   let db = 20 * Math.log10(ratio);
 
