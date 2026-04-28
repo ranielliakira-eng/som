@@ -131,11 +131,11 @@ function medir() {
   let rms = Math.sqrt(sum / dataArray.length);
 
   // 🔥 compara com o silêncio
- let ratio = rms / (baseline * 0.59);
+ let ratio = rms / (baseline * 0.6);
 
   let db = 20 * Math.log10(ratio);
 
-let dbFinal = 50 + (db * 4);
+let dbFinal = 45 + (db * 2);
 
 // limitar faixa
 dbFinal = Math.max(35, Math.min(95, dbFinal));
