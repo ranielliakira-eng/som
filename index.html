@@ -136,7 +136,7 @@ function medir() {
   let db = 20 * Math.log10(ratio);
 
   // escala mais realista
-  let dbFinal = Math.max(30, Math.min(100, Math.round(db + 40)));
+  let dbFinal = Math.max(30, Math.min(100, Math.round(db + 1)));
 
   // suavização
   historico.push(dbFinal);
